@@ -1,0 +1,19 @@
+# Strumenti di sviluppo e verifica, NON necessari all'esecuzione.
+# Tenuti separati da requirements.txt perche' non devono finire
+# nell'immagine Docker: il container contiene solo cio' che serve
+# a far girare il servizio.
+#
+#   pip install -r requirements-dev.txt
+
+-r requirements.txt
+
+# Test: esecuzione, misura della copertura, property-based testing.
+pytest==9.1.1
+pytest-cov==7.1.0
+hypothesis==6.157.0
+
+# Client HTTP usato dai test dell'API e dai test sul container.
+httpx==0.28.1
+
+# Verifica statica: analizza il codice senza eseguirlo.
+ruff==0.14.6

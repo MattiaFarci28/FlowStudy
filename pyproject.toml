@@ -1,0 +1,11 @@
+[project]
+name = "flowstudy"
+version = "0.1.0"
+description = "Timer di studio con pause proporzionali al tempo studiato, sessioni per materia e statistiche."
+requires-python = ">=3.12"
+
+[tool.pytest.ini_options]
+# Aggiunge la radice del progetto a sys.path: senza questo,
+# "from src.domain import ..." nei test fallirebbe con ModuleNotFoundError.
+pythonpath = ["."]
+testpaths = ["tests"]

@@ -1,0 +1,35 @@
+# FlowStudy
+
+Timer di studio che calcola la pausa in base a quanto hai studiato: niente
+blocchi fissi da 25 minuti, studi finché sei concentrato e la pausa che ti
+spetta cresce con il tempo di studio. Le sessioni sono organizzate per materia,
+con statistiche per giorno, settimana e materia, un obiettivo giornaliero e la
+serie di giorni consecutivi in cui l'hai raggiunto.
+
+Progetto per il corso di **Ingegneria del Software Avanzata**, Università di
+Ferrara.
+
+## Requisiti
+
+- Python **3.12** (l'ambiente di sviluppo, il container e la pipeline usano
+  tutti la stessa versione; `requirements.txt` è stato generato con la 3.12.3)
+
+
+## Installazione
+
+```bash
+git clone https://github.com/MattiaFarci28/FlowStudy.git
+cd FlowStudy
+python3 -m venv venv
+source venv/bin/activate              # Windows: venv\Scripts\activate
+pip install -r requirements.txt       # solo l'esecuzione
+pip install -r requirements-dev.txt   # anche test e strumenti di verifica
+```
+
+L'attivazione del virtual environment vale solo per la sessione di terminale
+corrente e va ripetuta a ogni nuovo terminale.
+
+
+## Licenza
+
+MIT, vedi [LICENSE](LICENSE).

@@ -1,0 +1,22 @@
+# Ambiente virtuale: si ricrea da requirements.txt, non si versiona.
+venv/
+.venv/
+
+# File generati da Python e dagli strumenti di test.
+__pycache__/
+*.pyc
+.pytest_cache/
+.hypothesis/
+
+# Database locale: contiene dati, non codice.
+*.db
+
+# Report della copertura: si rigenerano a ogni esecuzione.
+htmlcov/
+.coverage
+coverage.xml
+
+# Configurazione degli editor: personale di chi sviluppa,
+# non fa parte del progetto.
+.vscode/
+.idea/
