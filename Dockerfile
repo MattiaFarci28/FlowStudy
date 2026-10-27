@@ -6,6 +6,11 @@
 # Stessa versione di Python dell'ambiente di sviluppo e della pipeline.
 FROM python:3.12-slim
 
+# Collega l'immagine pubblicata su ghcr.io al repository GitHub.
+LABEL org.opencontainers.image.source="https://github.com/MattiaFarci28/FlowStudy" \
+      org.opencontainers.image.description="Timer di studio con pause proporzionali al tempo studiato" \
+      org.opencontainers.image.licenses="MIT"
+
 # Niente file .pyc e output dei log subito visibile con "docker logs".
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1
@@ -28,8 +33,9 @@ VOLUME /dati
 
 EXPOSE 8000
 
-# Docker controlla ogni 30 secondi che il servizio risponda.
-HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
+# Docker controlla ogni 30 secondi che il servizio risponda; nei primi 10
+# secondi controlla ogni 2, cosi' il container risulta pronto quasi subito.
+HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --start-interval=2s --retries=3 \
     CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/openapi.json')"]
 
 CMD ["uvicorn", "--factory", "src.api:crea_app", "--host", "0.0.0.0", "--port", "8000"]

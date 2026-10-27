@@ -1,5 +1,7 @@
 # FlowStudy
 
+[![CI/CD](https://github.com/MattiaFarci28/FlowStudy/actions/workflows/ci.yml/badge.svg)](https://github.com/MattiaFarci28/FlowStudy/actions/workflows/ci.yml)
+
 Timer di studio che calcola la pausa in base a quanto hai studiato: niente
 blocchi fissi da 25 minuti, studi finché sei concentrato e la pausa che ti
 spetta cresce con il tempo di studio. Le sessioni sono organizzate per materia,
@@ -72,6 +74,22 @@ ruff check                     # analisi statica del codice
 ```
 
 La configurazione di pytest, della copertura e di ruff è in `pyproject.toml`.
+
+
+## Integrazione e consegna continua
+
+A ogni push e pull request GitHub Actions esegue la pipeline
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml):
+
+1. **Analisi statica e test**: ruff, test di unità e property-based, test di
+   integrazione e copertura (il rapporto si scarica dalla pagina dell'esecuzione);
+2. **Container**: costruisce l'immagine, la avvia e la prova via rete;
+3. **Pubblicazione**: solo su `main` e sui tag di versione, e solo se tutto è
+   passato, l'immagine viene pubblicata su GitHub Container Registry.
+
+```bash
+docker run -d -p 8000:8000 -v flowstudy-dati:/dati ghcr.io/mattiafarci28/flowstudy:latest
+```
 
 
 ## Licenza

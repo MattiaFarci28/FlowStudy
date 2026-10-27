@@ -1,0 +1,121 @@
+# Pipeline di FlowStudy (RNF5).
+#
+# A ogni push e a ogni pull request:
+#   1. verifica  -> analisi statica, test di unita', test di integrazione, copertura
+#   2. container -> costruisce l'immagine, la avvia e la prova via rete
+# Solo su main e sui tag di versione (v1.0.0, ...), se tutto e' passato:
+#   3. pubblica l'immagine su GitHub Container Registry (ghcr.io)
+#
+# Ogni passo parte solo se il precedente e' riuscito: un errore ferma la
+# pipeline e nessuna immagine difettosa viene pubblicata.
+
+name: CI/CD
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+
+# Per impostazione predefinita la pipeline puo' solo leggere il repository.
+permissions:
+  contents: read
+
+jobs:
+  verifica:
+    name: Analisi statica e test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+
+      - name: Installazione delle dipendenze
+        run: pip install -r requirements-dev.txt
+
+      - name: Analisi statica (ruff)
+        run: ruff check
+
+      # La copertura si raccoglie in due passi e si somma: la soglia del 95%
+      # (pyproject.toml) si controlla alla fine, sul totale.
+      - name: Test di unita' e property-based
+        run: pytest -m "not integrazione and not container" --cov --cov-fail-under=0
+
+      - name: Test di integrazione e copertura
+        run: pytest -m integrazione --cov --cov-append --cov-report=term --cov-report=html
+
+      - name: Pubblicazione del rapporto di copertura
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: copertura
+          path: htmlcov/
+
+  container:
+    name: Container
+    needs: verifica
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements*.txt
+
+      - name: Installazione delle dipendenze
+        run: pip install -r requirements-dev.txt
+
+      - name: Costruzione dell'immagine
+        run: docker build -t flowstudy:ci .
+
+      - name: Avvio del container
+        run: |
+          docker run -d -p 8000:8000 --name flowstudy flowstudy:ci
+          for i in $(seq 30); do
+            [ "$(docker inspect -f '{{.State.Health.Status}}' flowstudy)" = healthy ] && exit 0
+            sleep 2
+          done
+          echo "Il container non e' diventato healthy"; exit 1
+
+      - name: Test sul container
+        run: pytest -m container
+        env:
+          FLOWSTUDY_URL: http://localhost:8000
+
+      - name: Log del container
+        if: always()
+        run: docker logs flowstudy
+
+      # Accesso con il solo comando docker: il token con il permesso di
+      # pubblicare non passa per azioni di terze parti.
+      - name: Accesso a GitHub Container Registry
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        run: echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Si pubblica la stessa immagine appena provata, non una ricostruita.
+      #   main     -> :latest e :<commit>
+      #   v1.0.0   -> :1.0.0
+      - name: Pubblicazione dell'immagine
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/tags/v'))
+        run: |
+          IMMAGINE="ghcr.io/${GITHUB_REPOSITORY,,}"
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            ETICHETTE="${GITHUB_REF_NAME#v}"
+          else
+            ETICHETTE="latest ${GITHUB_SHA::7}"
+          fi
+          for e in $ETICHETTE; do
+            docker tag flowstudy:ci "$IMMAGINE:$e"
+            docker push "$IMMAGINE:$e"
+          done
