@@ -30,6 +30,18 @@ L'attivazione del virtual environment vale solo per la sessione di terminale
 corrente e va ripetuta a ogni nuovo terminale.
 
 
+## Avvio
+
+```bash
+uvicorn --factory src.api:crea_app
+```
+
+Il servizio risponde su http://localhost:8000; la documentazione interattiva
+dell'API è su http://localhost:8000/docs. I dati vengono salvati nel file
+`flowstudy.db`; per usarne un altro si imposta la variabile d'ambiente
+`FLOWSTUDY_DB` (per esempio `sqlite:///altro.db`).
+
+
 ## Licenza
 
 MIT, vedi [LICENSE](LICENSE).
