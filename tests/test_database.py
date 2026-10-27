@@ -29,6 +29,8 @@ from src.database import (
 )
 from src.domain import FUSO, Impostazioni, Modalita, Sessione, Stato, Timer, durata
 
+pytestmark = pytest.mark.integrazione
+
 
 def ora(*args):
     return datetime(*args, tzinfo=FUSO)

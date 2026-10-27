@@ -27,6 +27,7 @@ from src import database as dbm
 from src.domain import (
     Impostazioni,
     Modalita,
+    Stato,
     Timer,
     TransizioneNonValida,
     aggiorna,
@@ -93,7 +94,7 @@ def _materia(m: dbm.MateriaDB) -> dict:
 
 
 def _timer(timer: Timer | None, adesso: datetime, suona: bool) -> dict:
-    if timer is None:
+    if timer is None or timer.stato is Stato.CONCLUSO:
         return {"attivo": False, "suona": suona}
     return {
         "attivo": True,

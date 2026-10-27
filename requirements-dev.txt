@@ -12,8 +12,9 @@ pytest==9.1.1
 pytest-cov==7.1.0
 hypothesis==6.157.0
 
-# Client HTTP usato dai test dell'API e dai test sul container.
-httpx==0.28.1
+# Client HTTP usato dai test dell'API e dai test sul container
+# (il client di test di Starlette richiede httpx2 al posto di httpx).
+httpx2==2.16.0
 
 # Verifica statica: analizza il codice senza eseguirlo.
 ruff==0.14.6
