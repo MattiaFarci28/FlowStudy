@@ -6,6 +6,7 @@ in pochi millisecondi scadenze di 25 minuti, la mezzanotte e il ritorno dopo
 un'assenza.
 """
 
+import codecs
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -173,7 +174,8 @@ def test_creare_il_timer(client):
 def test_pomeriggio_in_modalita_statica(client, ora):
     """L'esempio di docs/02-statechart.md, passo per passo."""
     m = nuova_materia(client)
-    assert avvia_timer(client, m)["secondi_rimanenti"] == 25 * 60     # 15:00
+    t = avvia_timer(client, m)                                          # 15:00
+    assert (t["secondi_rimanenti"], t["pausa_maturata_s"]) == (25 * 60, None)
 
     ora.avanza(minutes=25)                                              # 15:25
     t = client.get("/timer").json()
@@ -196,7 +198,8 @@ def test_pausa_dinamica_proporzionale_allo_studio(client, ora):
     m = nuova_materia(client)
     assert avvia_timer(client, m)["secondi_rimanenti"] is None          # si studia quanto si vuole
     ora.avanza(minutes=50)
-    assert client.get("/timer").json()["stato"] == "studio"             # nessuna scadenza
+    t = client.get("/timer").json()
+    assert (t["stato"], t["pausa_maturata_s"]) == ("studio", 10 * 60)  # nessuna scadenza
     t = client.post("/timer/pausa").json()
     assert (t["stato"], t["secondi_rimanenti"]) == ("pausa", 10 * 60)
     ora.avanza(minutes=4)
@@ -273,6 +276,7 @@ def test_eliminare_sessioni_e_giornate(client, ora):
 def test_statistiche_senza_studio(client):
     s = client.get("/statistiche").json()
     assert (s["oggi"], s["studio_oggi_s"], s["serie"], s["bonsai"]) == ("2026-10-27", 0, 0, "seme")
+    assert (s["giorni_bonsai"], s["soglia_prossima"]) == (0, 1)
 
 
 def studia(client, ora, giorno, minuti, materia_id, alle=9):
@@ -291,6 +295,7 @@ def test_serie_bonsai_e_settimane(client, ora):
     assert s["studio_oggi_s"] == 30 * 60
     assert s["serie"] == 3                  # 24, 25, 26; oggi (30 min) non interrompe
     assert s["bonsai"] == "piantina"        # 4 giorni con obiettivo negli ultimi 30
+    assert (s["giorni_bonsai"], s["soglia_prossima"]) == (4, 10)
     assert s["per_settimana"] == {"2026-10-19": 210 * 60, "2026-10-26": 90 * 60}
 
 
@@ -313,12 +318,29 @@ def test_esportazione_csv(client, ora):
     ora.avanza(minutes=10)
     client.post("/timer/termina")
     risposta = client.get("/export.csv")
-    assert risposta.headers["content-type"].startswith("text/csv")
+    assert risposta.headers["content-type"] == "text/csv; charset=utf-8"
     assert "flowstudy.csv" in risposta.headers["content-disposition"]
-    assert risposta.text.splitlines() == [
-        "materia,inizio,fine,durata_s",
-        '"Analisi, ""2""",2026-10-27T15:00:00+01:00,2026-10-27T15:10:00+01:00,600',
+    assert risposta.content.startswith(codecs.BOM_UTF8)            # Excel riconosce l'UTF-8
+    assert risposta.content.decode("utf-8-sig").splitlines() == [
+        "Materia;Giorno;Inizio;Fine;Minuti",
+        '"Analisi, ""2""";27/10/2026;15:00;15:10;10',
     ]
+
+
+# --- Interfaccia web -------------------------------------------------------
+
+def test_la_pagina_web_e_servita(client):
+    pagina = client.get("/")
+    assert pagina.status_code == 200 and "text/html" in pagina.headers["content-type"]
+    versione = client.get("/openapi.json").json()["info"]["version"]
+    assert f"FlowStudy {versione}" in pagina.text and f"/static/app.js?v={versione}" in pagina.text
+    assert "{{" not in pagina.text
+    for risorsa in ["/static/app.js", "/static/style.css", "/static/icona.png", "/static/logo.png",
+                    "/static/pomodoro.webp", "/static/pomodoro-pausa.webp"]:
+        assert risorsa in pagina.text
+        risposta = client.get(risorsa)
+        assert risposta.status_code == 200
+        assert risposta.headers["cache-control"] == "no-cache"     # niente script vecchi dopo un aggiornamento
 
 
 # --- Configurazione --------------------------------------------------------

@@ -1,0 +1,353 @@
+/* Colori e misure dell'app, presi dal logo: rosso pomodoro, verde foglia,
+   marrone del picciolo, crema dello sfondo. */
+:root {
+  --pomodoro: #e0362b;
+  --pomodoro-scuro: #b8261d;
+  --pomodoro-chiaro: #fde4e1;
+  --foglia: #5f9a35;
+  --foglia-scura: #3f7424;
+  --foglia-chiara: #e3efd6;
+  --parziale: #b5d98f;       /* giorno con un po' di studio: verde tenue, nessun giudizio */
+  --sfondo: #fbf5ea;
+  --carta: #fffdf8;
+  --testo: #3b2a20;
+  --tenue: #8a7768;
+  --bordo: #ece2d1;
+  --ombra: 0 1px 2px rgba(80, 50, 20, .05), 0 4px 16px rgba(80, 50, 20, .06);
+  --raggio: 18px;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  background: var(--sfondo);
+  color: var(--testo);
+  font: 16px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+main { max-width: 1000px; margin: 0 auto; padding: 0 16px 48px; }
+h2, h3 { margin: 0 0 .6rem; }
+h2 { font-size: 1.35rem; }
+h3 { font-size: .8rem; color: var(--tenue); text-transform: uppercase; letter-spacing: .08em; }
+.nota { color: var(--tenue); font-size: .9rem; margin: .25rem 0; }
+
+/* --- Testata e schede --- */
+
+.testata {
+  max-width: 1000px; margin: 0 auto; padding: 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+}
+.marchio { display: block; height: 44px; width: auto; }
+.saluto { margin: 0; color: var(--tenue); font-weight: 500; }
+
+.schede {
+  max-width: 1000px; margin: 0 auto 16px; padding: 0 16px;
+  display: flex; gap: 8px;
+}
+.scheda {
+  flex: 1; min-width: 0; min-height: 44px; padding: 8px 6px; border-radius: 999px;
+  border: 1px solid var(--bordo); background: var(--carta); color: var(--testo);
+}
+.scheda.attiva { background: var(--pomodoro); border-color: var(--pomodoro); color: #fff; font-weight: 600; }
+
+/* --- Disposizione delle schermate ---
+   Su schermo largo due colonne uguali; su telefono una colonna, tranne
+   Oggi e Serie che restano affiancati come due quadrati. */
+
+.schermata { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.bonsai-carta, .dati { grid-column: 1 / -1; }
+#progressi { align-items: stretch; }
+@media (max-width: 760px) {
+  .scheda { font-size: .92rem; }
+  .schermata { grid-template-columns: minmax(0, 1fr); }
+  #progressi { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #progressi > .scheda-carta:not(.riquadro) { grid-column: 1 / -1; }
+  .riquadro { min-height: 150px; padding: 16px; }
+}
+@media (max-width: 400px) {
+  .schede { gap: 6px; }
+  .scheda { padding: 8px 2px; font-size: .85rem; }
+}
+
+.scheda-carta {
+  background: var(--carta); border: 1px solid var(--bordo); border-radius: var(--raggio);
+  padding: 20px; box-shadow: var(--ombra); min-width: 0;
+}
+
+/* --- Campi --- */
+
+.campo { display: grid; gap: 6px; margin-bottom: 14px; justify-items: start; }
+.campo > span:first-child { font-size: .85rem; font-weight: 500; color: var(--tenue); }
+input, select {
+  width: 100%; min-height: 44px; padding: 9px 12px; font: inherit; color: var(--testo);
+  background: #fff; border: 1px solid var(--bordo); border-radius: 12px;
+  transition: border-color .15s, box-shadow .15s;
+}
+input:hover, select:hover { border-color: #d9cbb4; }
+input:focus, select:focus { outline: none; border-color: var(--pomodoro); box-shadow: 0 0 0 3px var(--pomodoro-chiaro); }
+select { appearance: none; padding-right: 36px; cursor: pointer;
+  background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a7768' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center / 16px; }
+
+/* Larghezza in base a cio' che il campo deve contenere. */
+.largo-nome { max-width: 22rem; }
+.largo-numero { width: 5.5rem; text-align: right; }
+.largo-scelta { max-width: 22rem; }
+select.compatto { width: auto; min-height: 36px; padding-top: 6px; padding-bottom: 6px; font-size: .9rem; }
+
+.con-unita { display: inline-flex; align-items: center; gap: 8px; }
+.con-unita > span { color: var(--tenue); font-size: .9rem; }
+
+.riga-campi { display: flex; flex-wrap: wrap; gap: 12px 16px; align-items: end; }
+.riga-campi .campo { margin-bottom: 0; }
+.riga-campi > input { flex: 1; }
+form.scheda-carta > .riga-campi + h3 { margin-top: 22px; }
+.riga-campi.in-fondo { margin-top: 4px; }
+.riga-campi.in-fondo > button { margin-left: auto; }
+.affiancati { display: flex; gap: 10px; align-items: center; width: 100%; }
+.affiancati > select { flex: 1; }
+
+/* --- Pulsanti --- */
+
+button, .pulsante {
+  min-height: 44px; padding: 10px 18px; border-radius: 12px; border: 1px solid var(--bordo);
+  background: #fff; color: var(--testo); font: inherit; font-weight: 500; cursor: pointer;
+  text-decoration: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  transition: background .15s, border-color .15s, color .15s, transform .1s;
+}
+button:hover, .pulsante:hover { border-color: var(--pomodoro); }
+button:active, .pulsante:active { transform: scale(.97); }
+button:disabled { opacity: .45; cursor: not-allowed; transform: none; }
+.primario { background: var(--pomodoro); border-color: var(--pomodoro); color: #fff; font-weight: 600; }
+.primario:hover { background: var(--pomodoro-scuro); border-color: var(--pomodoro-scuro); }
+.pericolo { color: var(--pomodoro-scuro); }
+button svg, .pulsante svg {
+  width: 20px; height: 20px; fill: none; stroke: currentColor; stroke-width: 2.4;
+  stroke-linecap: round; stroke-linejoin: round; flex: none;
+}
+.tondo { width: 44px; height: 44px; padding: 0; border-radius: 50%; flex: none; }
+:focus-visible { outline: 3px solid var(--foglia); outline-offset: 2px; }
+
+/* --- Pomodoro --- */
+
+.timer { display: grid; justify-items: center; }
+.timer .campo { width: 100%; justify-items: stretch; }
+#pomodoro { width: 100%; max-width: 300px; touch-action: none; user-select: none; }
+#pomodoro.regolabile { cursor: ew-resize; }
+#pomodoro:focus:not(:focus-visible) { outline: none; }
+.frecce-ghiera { opacity: 0; transition: opacity .3s; }
+#pomodoro.regolabile .frecce-ghiera { opacity: .85; }
+.buccia-pausa { opacity: 0; transition: opacity .8s ease; }
+.in-pausa .buccia-pausa { opacity: 1; }
+.cifra { fill: #fff; font-size: 24px; font-weight: 700; }
+.tempo {
+  margin: 4px 0 0; font-size: 3.2rem; font-weight: 700; line-height: 1.1;
+  font-variant-numeric: tabular-nums; user-select: none; transition: color .8s;
+}
+.etichetta { margin: 0 0 8px; color: var(--tenue); text-align: center; user-select: none; }
+.maturata {
+  margin: 0 0 10px; padding: 6px 16px; border-radius: 999px; font-size: 1.05rem; font-weight: 700;
+  color: var(--foglia-scura); background: var(--foglia-chiara); font-variant-numeric: tabular-nums;
+}
+
+/* Interruttore Pomodoro / Flowtime */
+.interruttore {
+  display: inline-flex; padding: 4px; gap: 4px; margin-bottom: 4px;
+  background: var(--sfondo); border: 1px solid var(--bordo); border-radius: 999px;
+}
+.interruttore button {
+  min-height: 36px; padding: 6px 18px; border: none; border-radius: 999px;
+  background: none; color: var(--tenue); font-size: .9rem;
+}
+.interruttore button[aria-pressed="true"] { background: var(--carta); color: var(--testo); font-weight: 600; box-shadow: var(--ombra); }
+.interruttore button:disabled { opacity: .55; }
+.interruttore button:disabled[aria-pressed="true"] { opacity: 1; }
+.in-pausa .tempo { color: var(--foglia-scura); }
+.in-pausa .etichetta { color: var(--foglia); font-weight: 600; }
+.in-pausa .comandi .primario { background: var(--foglia); border-color: var(--foglia); }
+.in-pausa .comandi .primario:hover { background: var(--foglia-scura); border-color: var(--foglia-scura); }
+.comandi { display: flex; gap: 10px; flex-wrap: wrap; justify-content: center; margin-top: 8px; }
+.comandi button { min-width: 120px; }
+/* Telefono: pomodoro piu' basso, cosi' Avvia resta in vista senza scorrere. */
+@media (max-width: 760px) { #pomodoro { max-width: min(250px, 31vh); } }
+.oggi-home { width: 100%; max-width: 300px; margin-top: 18px; text-align: center; }
+.oggi-home .nota { margin-top: 6px; }
+
+/* --- Calendario --- */
+
+.mese { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px; }
+.mese h3 { margin: 0; }
+.titolo-mese {
+  background: none; border: none; color: inherit; padding: 4px 0; min-height: 44px;
+  font-size: 1.15rem; font-weight: 700;
+}
+.titolo-mese::after {
+  content: "›"; color: var(--pomodoro); font-size: 1.4rem; line-height: 1; transition: transform .2s;
+}
+.titolo-mese[aria-expanded="true"]::after { transform: rotate(90deg); }
+.frecce { display: flex; gap: 8px; }
+
+.calendario { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px 4px; text-align: center; }
+.calendario .intestazione { font-size: .72rem; font-weight: 600; color: var(--tenue); letter-spacing: .04em; }
+.giorno-cal {
+  justify-self: center; width: 100%; max-width: 42px; height: auto; aspect-ratio: 1;
+  min-height: 0; padding: 0; border-radius: 50%;
+  border: 2px solid transparent; background: var(--sfondo); color: var(--testo); font-weight: 600;
+  position: relative;
+}
+.calendario.espanso .giorno-cal { background: none; color: var(--tenue); font-weight: 500; }
+.calendario.espanso .giorno-cal.studio { color: var(--testo); font-weight: 700; }
+.giorno-cal.studio::after {
+  content: ""; position: absolute; left: 50%; bottom: 3px; width: 6px; height: 6px;
+  margin-left: -3px; border-radius: 50%; background: var(--parziale);
+}
+.giorno-cal.raggiunto::after { background: var(--foglia); }
+.calendario .giorno-cal.oggi,
+.calendario.espanso .giorno-cal.oggi { background: var(--pomodoro); color: #fff; font-weight: 700; }
+.giorno-cal.oggi::after { background: #fff; }
+.giorno-cal.scelto { border-color: var(--testo); }
+.giorno-cal:hover { border-color: var(--pomodoro); }
+
+.divisore {
+  display: flex; align-items: center; gap: 12px; margin: 18px 0 8px;
+  font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--tenue);
+}
+.divisore::before, .divisore::after { content: ""; flex: 1; height: 1px; background: var(--bordo); }
+.titolo-giorno { color: var(--testo); text-transform: none; font-size: 1rem; letter-spacing: 0; }
+
+.linea-tempo { list-style: none; padding: 0; margin: 0; }
+.tappa {
+  display: grid; grid-template-columns: 64px 18px minmax(0, 1fr) auto; align-items: center;
+  gap: 8px; padding: 10px 0; position: relative;
+}
+.tappa.cliccabile { cursor: pointer; border-radius: 12px; }
+.tappa.cliccabile:hover .cosa b { color: var(--pomodoro); }
+.quando { display: grid; font-size: .8rem; color: var(--tenue); line-height: 1.25; }
+.quando b { color: var(--testo); }
+.tappa::before { content: ""; position: absolute; left: 80px; top: 0; bottom: 0; width: 1px; background: var(--bordo); }
+.pallino {
+  justify-self: center; width: 10px; height: 10px; border-radius: 50%;
+  background: var(--foglia); position: relative; z-index: 1; box-shadow: 0 0 0 3px var(--carta);
+}
+.cosa { display: grid; min-width: 0; }
+.cosa b { color: var(--testo); font-size: 1.05rem; }
+.cosa span { color: var(--tenue); font-size: .85rem; }
+.cestino { min-height: 0; background: none; border: none; color: var(--tenue); padding: 8px; border-radius: 10px; }
+.cestino:hover { color: var(--pomodoro); background: var(--pomodoro-chiaro); }
+.azioni-giorno { display: flex; justify-content: space-between; gap: 8px; margin-top: 10px; }
+.testo { background: none; border: none; color: var(--pomodoro); padding: 6px 0; font-weight: 600; }
+.testo.pericolo { color: var(--pomodoro-scuro); }
+
+/* --- Progressi --- */
+
+.bonsai-carta { display: flex; align-items: center; justify-content: center; gap: 24px 40px; flex-wrap: wrap; }
+.bonsai-testo { max-width: 22rem; }
+.bonsai-testo .barra { margin-top: 12px; }
+#bonsai { width: 200px; height: 200px; flex: none; }
+#bonsai g[data-stadi] { opacity: 0; transition: opacity .6s; }
+
+.riquadro { display: flex; flex-direction: column; }
+.anello { flex: 1; display: flex; align-items: center; gap: 16px; }
+.anello svg { width: 96px; height: 96px; flex: none; transform: rotate(-90deg); }
+.anello circle { fill: none; stroke-width: 12; }
+.anello-fondo { stroke: var(--foglia-chiara); }
+.anello-pieno { stroke: var(--foglia); stroke-linecap: round; stroke-dasharray: 0 100; transition: stroke-dasharray .6s ease; }
+.serie { flex: 1; display: grid; place-content: center; justify-items: center; text-align: center; }
+.serie .nota { margin: 0; }
+.fiamma { font-size: .7em; margin-right: 6px; vertical-align: .1em; }
+.numero { font-size: 1.8rem; font-weight: 700; margin: 0; line-height: 1.1; }
+.numero.grande { font-size: 3rem; }
+@media (max-width: 760px) {
+  .riquadro h3 { margin-bottom: .2rem; }
+  .anello { flex-direction: column; justify-content: center; text-align: center; gap: 6px; }
+  .anello svg { width: 60px; height: 60px; }
+  .anello .nota { margin: 0; font-size: .8rem; }
+  .numero { font-size: 1.3rem; }
+  .numero.grande { font-size: 2.6rem; }
+  #bonsai { width: 160px; height: 160px; }
+  .bonsai-carta { text-align: center; }
+}
+
+.colonne { display: flex; align-items: end; gap: 8px; height: 170px; }
+.colonna { flex: 1; display: grid; grid-template-rows: 1fr auto auto; height: 100%; text-align: center; font-size: .72rem; }
+.colonna .area { position: relative; display: flex; align-items: end; }
+.colonna .pieno { width: 100%; background: var(--foglia); border-radius: 6px 6px 2px 2px; min-height: 4px; }
+.colonna .pieno.parziale { background: var(--parziale); }
+.colonna .pieno.vuoto { background: var(--bordo); }
+/* l'obiettivo della settimana: una riga tratteggiata che attraversa tutte le colonne */
+.linea-obiettivo { position: absolute; left: -4px; right: -4px; border-top: 2px dashed var(--foglia-scura); opacity: .45; }
+.legenda { display: flex; align-items: center; gap: 8px; margin-top: 10px; font-size: .8rem; }
+.tratteggio { width: 22px; border-top: 2px dashed var(--foglia-scura); opacity: .6; }
+.colonna .valore { color: var(--testo); font-weight: 600; min-height: 1.2em; }
+.colonna .data { color: var(--tenue); }
+.righe { display: grid; gap: 12px; }
+.riga-materia { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; }
+.riga-materia > span:first-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+.riga-materia small { color: var(--tenue); font-size: .85em; }
+.barra { height: 10px; border-radius: 999px; background: var(--foglia-chiara); overflow: hidden; grid-column: 1 / -1; }
+.barra > div { height: 100%; width: 0; background: var(--foglia); border-radius: 999px; transition: width .4s; }
+
+/* --- Impostazioni --- */
+
+.elenco { list-style: none; padding: 0; margin: 12px 0 0; }
+.elenco li { display: flex; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--bordo); }
+.elenco li:last-child { border-bottom: none; }
+.elenco li > span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.elenco button { min-height: 36px; padding: 6px 12px; font-size: .85rem; }
+.dati { display: flex; align-items: center; justify-content: space-between; gap: 12px 24px; flex-wrap: wrap; }
+.dati h3 { margin-bottom: .2rem; }
+.versione { grid-column: 1 / -1; margin: 8px 0 0; text-align: center; font-size: .8rem; color: var(--tenue); }
+.versione a { color: inherit; }
+
+/* --- Dialogo e avvisi --- */
+
+dialog {
+  border: none; border-radius: var(--raggio); padding: 22px; width: min(420px, calc(100% - 32px));
+  box-shadow: 0 12px 40px rgba(59, 42, 32, .25); color: var(--testo); background: var(--carta);
+}
+dialog::backdrop { background: rgba(59, 42, 32, .35); }
+dialog p { margin-top: 0; font-weight: 500; }
+dialog input { margin-bottom: 8px; }
+.avviso {
+  position: fixed; left: 50%; bottom: 20px; transform: translate(-50%, 8px);
+  background: var(--testo); color: #fff; padding: 10px 18px; border-radius: 12px;
+  opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s; max-width: calc(100% - 32px);
+}
+.avviso.visibile { opacity: 1; transform: translate(-50%, 0); }
+
+/* --- Tutto in una schermata ---
+   Su computer e tablet la pagina occupa esattamente la finestra: il pomodoro
+   si adatta all'altezza disponibile e le liste lunghe scorrono dentro la
+   propria scheda. Se la finestra e' troppo bassa scorre solo il contenuto. */
+
+@media (min-width: 761px) and (min-height: 620px) {
+  body { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
+  .testata, .schede { flex: none; width: 100%; }
+  main { flex: 1; min-height: 0; width: 100%; overflow-y: auto; padding-bottom: 16px; }
+  .schermata { height: 100%; }
+
+  #home { align-items: stretch; grid-template-rows: minmax(0, 1fr); }
+  .timer { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 0; }
+  #pomodoro { flex: 1 1 0; min-height: 0; width: auto; max-width: 100%; max-height: 520px; aspect-ratio: 391 / 500; }
+  /* il calendario e' alto quanto il suo contenuto, al massimo quanto il pomodoro: poi le sessioni scorrono */
+  .calendario-carta { display: flex; flex-direction: column; min-height: 0; align-self: start; max-height: 100%; }
+  #sessioni { flex: 0 1 auto; min-height: 0; overflow-y: auto; margin-right: -8px; padding-right: 8px; }
+}
+
+/* Progressi su quattro colonne: bonsai, oggi e serie sopra, i due grafici sotto. */
+@media (min-width: 1000px) and (min-height: 620px) {
+  #progressi { grid-template-columns: repeat(4, minmax(0, 1fr)); grid-template-rows: auto minmax(0, 1fr); }
+  #progressi .bonsai-carta { grid-column: span 2; flex-wrap: nowrap; gap: 24px; }
+  #progressi .settimane-carta, #progressi .materie-carta { grid-column: span 2; display: flex; flex-direction: column; min-height: 0; }
+  #bonsai { width: 150px; height: 150px; }
+  .anello { flex-direction: column; justify-content: center; text-align: center; gap: 8px; }
+  .anello svg { width: 76px; height: 76px; }
+  .colonne { flex: 1; height: auto; min-height: 120px; }
+  .materie-carta .righe { flex: 1; min-height: 0; overflow-y: auto; align-content: start; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: 0s !important; }
+}

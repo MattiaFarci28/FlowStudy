@@ -1,3 +1,5 @@
+![FlowStudy, studia con il tuo ritmo](docs/img/banner.jpg)
+
 # FlowStudy
 
 [![CI/CD](https://github.com/MattiaFarci28/FlowStudy/actions/workflows/ci.yml/badge.svg)](https://github.com/MattiaFarci28/FlowStudy/actions/workflows/ci.yml)

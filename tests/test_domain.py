@@ -21,6 +21,7 @@ from src.domain import (
     aggiorna,
     avvia,
     chiave_nome,
+    costanza,
     durata,
     esporta_csv,
     giorni_con_obiettivo,
@@ -28,6 +29,7 @@ from src.domain import (
     normalizza_nome,
     pausa,
     pausa_spettante,
+    prossima_soglia,
     ripartisci_per_giorno,
     riprendi,
     secondi_rimanenti,
@@ -412,16 +414,30 @@ def test_stadio_bonsai_conta_solo_gli_ultimi_30_giorni():
     assert stadio_bonsai(giorni_fa(30, -1), OGGI) is Stadio.SEME
 
 
+def test_costanza_conta_i_giorni_nella_finestra():
+    assert costanza(giorni_fa(0, 5, 29, 30, -1), OGGI) == 3
+
+
+@pytest.mark.parametrize("k, soglia", [(0, 1), (3, 4), (4, 10), (9, 10), (19, 20), (20, None), (30, None)])
+def test_prossima_soglia(k, soglia):
+    assert prossima_soglia(k) == soglia
+
+
 # --- Esportazione ----------------------------------------------------------
 
 def test_esporta_csv():
-    testo = esporta_csv(reversed(REGISTRO[1:]), {1: 'Analisi, "2"', 2: "Fisica"})
+    testo = esporta_csv(reversed(REGISTRO[1:]), {1: 'Analisi; "2"', 2: "Fisica"})
     assert testo.splitlines() == [
-        "materia,inizio,fine,durata_s",
-        "Fisica,2026-10-27T09:00:00+01:00,2026-10-27T10:00:00+01:00,3600",
-        '"Analisi, ""2""",2026-10-27T15:00:00+01:00,2026-10-27T15:30:00+01:00,1800',
+        "Materia;Giorno;Inizio;Fine;Minuti",
+        "Fisica;27/10/2026;09:00;10:00;60",
+        '"Analisi; ""2""";27/10/2026;15:00;15:30;30',
     ]
 
 
+def test_esporta_csv_minuti_con_la_virgola():
+    breve = Sessione(1, ora(2026, 10, 27, 15, 0), ora(2026, 10, 27, 15, 1) + timedelta(seconds=30))
+    assert esporta_csv([breve], {1: "Fisica"}).splitlines()[1] == "Fisica;27/10/2026;15:00;15:01;1,5"
+
+
 def test_esporta_csv_senza_sessioni():
-    assert esporta_csv([], {}) == "materia,inizio,fine,durata_s\n"
+    assert esporta_csv([], {}) == "Materia;Giorno;Inizio;Fine;Minuti\n"

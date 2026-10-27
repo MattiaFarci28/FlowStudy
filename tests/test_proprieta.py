@@ -240,8 +240,9 @@ def test_normalizzare_due_volte_non_cambia_il_nome(nome):
 @given(registri, nomi, nomi, nomi)
 def test_il_csv_si_rilegge_uguale(r, n1, n2, n3):
     nomi_materie = {1: n1, 2: n2, 3: n3}
-    righe = list(csv.reader(io.StringIO(esporta_csv(r, nomi_materie))))
+    righe = list(csv.reader(io.StringIO(esporta_csv(r, nomi_materie)), delimiter=";"))
     attese = sorted(r, key=lambda s: s.inizio.astimezone(UTC))
-    assert righe[0] == ["materia", "inizio", "fine", "durata_s"]
+    assert righe[0] == ["Materia", "Giorno", "Inizio", "Fine", "Minuti"]
     assert [riga[0] for riga in righe[1:]] == [nomi_materie[s.materia_id] for s in attese]
-    assert [int(riga[3]) for riga in righe[1:]] == [durata(s) for s in attese]
+    minuti = [float(riga[4].replace(",", ".")) for riga in righe[1:]]
+    assert minuti == [round(durata(s) / 60, 1) for s in attese]

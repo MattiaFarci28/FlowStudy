@@ -10,7 +10,7 @@ Per restare motivati si può fissare un obiettivo di minuti al giorno: i giorni 
 
 ## Le tre schermate
 
-- **Home.** Al centro c'è un pomodoro da cucina: lo si gira per impostare il tempo, si avvia e suona quando il tempo scade. Sotto c'è un **calendario** del mese con i giorni di studio evidenziati; toccando un giorno si vede cosa si è studiato e per quanto, e da lì si possono eliminare una sessione o l'intera giornata.
+- **Home.** Al centro c'è un pomodoro da cucina: lo si gira per impostare il tempo, si avvia e suona quando il tempo scade. Una barretta dice quanto si è studiato oggi rispetto all'obiettivo. Sotto c'è un **calendario** del mese con i giorni di studio evidenziati; toccando un giorno si vede cosa si è studiato e per quanto, e da lì si possono eliminare una sessione o l'intera giornata.
 - **Progressi.** Il bonsai, la serie e tutte le statistiche: tempo di studio per giorno, per settimana e per materia.
 - **Impostazioni.** Il profilo, l'obiettivo giornaliero, la modalità della pausa, le materie e il download dei dati.
 
@@ -102,9 +102,11 @@ Descrivono cosa fa l'app, cioè cosa si può fare usandola.
   | da 10 a 19 | alberello |
   | da 20 a 30 | bonsai fiorito |
 
+  Accanto al bonsai l'app dice quanti giorni ha già e quanti ne mancano per lo stadio successivo.
+
 ### Esportazione
 
-- **RF21 — Scaricare i dati.** Si possono scaricare tutte le sessioni in un file CSV, che si apre anche con Excel: una riga per sessione con materia, inizio, fine e durata in secondi.
+- **RF21 — Scaricare i dati.** Si possono scaricare tutte le sessioni in un file CSV, pronto da aprire con Excel: una riga per sessione con materia, giorno, ora di inizio e di fine e durata in minuti.
 
 ## Requisiti non funzionali
 

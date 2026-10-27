@@ -443,6 +443,17 @@ _SOGLIE_BONSAI = (
 )
 
 
+def costanza(giorni_ok: set[date], oggi: date) -> int:
+    """Quanti giorni di ``giorni_ok`` cadono negli ultimi GIORNI_BONSAI giorni, oggi incluso (RF20)."""
+    primo = oggi - timedelta(days=GIORNI_BONSAI - 1)
+    return sum(1 for g in giorni_ok if primo <= g <= oggi)
+
+
+def prossima_soglia(k: int) -> int | None:
+    """Giorni di costanza che servono per lo stadio successivo; None se il bonsai e' gia' fiorito."""
+    return min((soglia for soglia, _ in _SOGLIE_BONSAI if soglia > k), default=None)
+
+
 def stadio_bonsai(giorni_ok: set[date], oggi: date) -> Stadio:
     """Stadio del bonsai in base alla costanza recente (RF20).
 
@@ -453,8 +464,7 @@ def stadio_bonsai(giorni_ok: set[date], oggi: date) -> Stadio:
           10 <= k <= 19, BONSAI_FIORITO se k >= 20.
           Monotonia: aggiungere giorni a ``giorni_ok`` non abbassa lo stadio.
     """
-    primo = oggi - timedelta(days=GIORNI_BONSAI - 1)
-    k = sum(1 for g in giorni_ok if primo <= g <= oggi)
+    k = costanza(giorni_ok, oggi)
     for soglia, stadio in _SOGLIE_BONSAI:
         if k >= soglia:
             return stadio
@@ -464,22 +474,27 @@ def stadio_bonsai(giorni_ok: set[date], oggi: date) -> Stadio:
 # --- Esportazione ----------------------------------------------------------
 
 def esporta_csv(sessioni: Iterable[Sessione], nomi: Mapping[int, str]) -> str:
-    """Testo CSV con tutte le sessioni (RF21).
+    """Testo CSV con tutte le sessioni, pronto da aprire con Excel in italiano (RF21).
 
     Pre:  ogni ``materia_id`` delle sessioni e' una chiave di ``nomi``.
-    Post: la prima riga e' ``materia,inizio,fine,durata_s``; segue una riga per
-          sessione, in ordine di inizio, con gli istanti in formato ISO 8601
-          nell'ora italiana. Un nome che contiene virgole o virgolette e'
-          racchiuso fra virgolette secondo le regole del formato CSV.
+    Post: i campi sono separati da ``;``, il separatore di Excel in italiano.
+          La prima riga e' ``Materia;Giorno;Inizio;Fine;Minuti``; segue una riga
+          per sessione, in ordine di inizio, con il giorno (gg/mm/aaaa) e le ore
+          (hh:mm) di inizio e fine nell'ora italiana, e la durata in minuti con
+          al piu' un decimale dopo la virgola. Un nome che contiene ``;`` o
+          virgolette e' racchiuso fra virgolette secondo le regole del CSV.
     """
     testo = io.StringIO()
-    scrittore = csv.writer(testo, lineterminator="\n")
-    scrittore.writerow(["materia", "inizio", "fine", "durata_s"])
+    scrittore = csv.writer(testo, delimiter=";", lineterminator="\n")
+    scrittore.writerow(["Materia", "Giorno", "Inizio", "Fine", "Minuti"])
     for s in sorted(sessioni, key=lambda s: _utc(s.inizio)):
+        inizio, fine = s.inizio.astimezone(FUSO), s.fine.astimezone(FUSO)
+        minuti = f"{durata(s) / 60:.1f}".removesuffix(".0").replace(".", ",")
         scrittore.writerow([
             nomi[s.materia_id],
-            s.inizio.astimezone(FUSO).isoformat(),
-            s.fine.astimezone(FUSO).isoformat(),
-            durata(s),
+            inizio.strftime("%d/%m/%Y"),
+            inizio.strftime("%H:%M"),
+            fine.strftime("%H:%M"),
+            minuti,
         ])
     return testo.getvalue()

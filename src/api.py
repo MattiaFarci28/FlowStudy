@@ -16,10 +16,12 @@ import os
 from collections.abc import Iterator
 from dataclasses import asdict
 from datetime import UTC, date, datetime
+from pathlib import Path
 from typing import Annotated, Literal
 
 from fastapi import Depends, FastAPI, Request, Response
-from fastapi.responses import JSONResponse
+from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
@@ -32,11 +34,14 @@ from src.domain import (
     TransizioneNonValida,
     aggiorna,
     avvia,
+    costanza,
     durata,
     esporta_csv,
     giorni_con_obiettivo,
     giorno_di,
     pausa,
+    pausa_spettante,
+    prossima_soglia,
     ripartisci_per_giorno,
     riprendi,
     secondi_rimanenti,
@@ -49,6 +54,7 @@ from src.domain import (
 )
 
 DB_PREDEFINITO = "sqlite:///flowstudy.db"
+INTERFACCIA = Path(__file__).parent / "static"     # la pagina web (RNF6)
 
 
 # --- Dipendenze ------------------------------------------------------------
@@ -96,7 +102,13 @@ def _materia(m: dbm.MateriaDB) -> dict:
 def _timer(timer: Timer | None, adesso: datetime, suona: bool) -> dict:
     if timer is None or timer.stato is Stato.CONCLUSO:
         return {"attivo": False, "suona": suona}
+    # In modalita' dinamica, la pausa che spetterebbe fermandosi adesso (RF10).
+    maturata = None
+    if timer.stato is Stato.STUDIO and timer.impostazioni.modalita is Modalita.DINAMICA:
+        studiato = int((adesso - timer.inizio_sessione).total_seconds())
+        maturata = pausa_spettante(studiato, timer.impostazioni)
     return {
+        "pausa_maturata_s": maturata,
         "attivo": True,
         "suona": suona,
         "materia_id": timer.materia_id,
@@ -149,6 +161,25 @@ def crea_app(url: str | None = None) -> FastAPI:
     for conflitto in (dbm.NomeGiaUsato, dbm.MateriaInUso, TransizioneNonValida, Conflitto):
         app.add_exception_handler(conflitto, _errore(409))
     app.add_exception_handler(ValueError, _errore(422))
+
+    # --- Interfaccia web (RNF6) ---
+
+    app.mount("/static", StaticFiles(directory=INTERFACCIA), name="static")
+
+    @app.middleware("http")
+    async def senza_copie_vecchie(request: Request, call_next):
+        # Il browser ricontrolla ogni file a ogni apertura (se non e' cambiato riceve
+        # un 304 e basta): dopo un aggiornamento non resta in cache lo script vecchio.
+        risposta = await call_next(request)
+        risposta.headers.setdefault("Cache-Control", "no-cache")
+        return risposta
+
+    @app.get("/", include_in_schema=False)
+    def pagina():
+        # La versione compare in Impostazioni e negli indirizzi di script e stile:
+        # a ogni nuova versione il browser li riscarica invece di usare quelli vecchi.
+        testo = (INTERFACCIA / "index.html").read_text(encoding="utf-8")
+        return HTMLResponse(testo.replace("{{versione}}", app.version))
 
     # --- Materie (RF1-RF4) ---
 
@@ -247,12 +278,15 @@ def crea_app(url: str | None = None) -> FastAPI:
         obiettivo = dbm.leggi_impostazioni(db).obiettivo_min
         ok = giorni_con_obiettivo(per_giorno, obiettivo)
         oggi = giorno_di(adesso)
+        k = costanza(ok, oggi)
         return {
             "oggi": oggi,
             "obiettivo_min": obiettivo,
             "studio_oggi_s": per_giorno.get(oggi, 0),
             "serie": serie(ok, oggi),
             "bonsai": stadio_bonsai(ok, oggi).value,
+            "giorni_bonsai": k,                     # per mostrare quanto manca allo stadio dopo
+            "soglia_prossima": prossima_soglia(k),
             "per_giorno": _per_data(per_giorno),
             "per_settimana": _per_data(studio_per_settimana(sessioni)),
         }
@@ -275,8 +309,9 @@ def crea_app(url: str | None = None) -> FastAPI:
         _timer_aggiornato(db, adesso)
         sessioni = [r.a_dominio() for r in dbm.elenca_sessioni(db)]
         return Response(
-            esporta_csv(sessioni, dbm.nomi_materie(db)),
-            media_type="text/csv",
+            # il BOM dice a Excel che il file e' in UTF-8: cosi' le lettere accentate restano giuste
+            "\ufeff" + esporta_csv(sessioni, dbm.nomi_materie(db)),
+            media_type="text/csv; charset=utf-8",
             headers={"Content-Disposition": 'attachment; filename="flowstudy.csv"'},
         )
 

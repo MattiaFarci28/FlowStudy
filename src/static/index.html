@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>FlowStudy</title>
+  <link rel="icon" href="/static/icona.png" type="image/png">
+  <link rel="apple-touch-icon" href="/static/icona.png">
+  <link rel="stylesheet" href="/static/style.css?v={{versione}}">
+</head>
+<body>
+  <header class="testata">
+    <img class="marchio" src="/static/logo.png" alt="FlowStudy" height="44">
+    <p id="saluto" class="saluto"></p>
+  </header>
+
+  <nav class="schede" aria-label="Schermate">
+    <button class="scheda attiva" data-scheda="home" aria-current="page">Home</button>
+    <button class="scheda" data-scheda="progressi">Progressi</button>
+    <button class="scheda" data-scheda="impostazioni">Impostazioni</button>
+  </nav>
+
+  <main>
+    <!-- HOME: pomodoro e calendario -->
+    <section id="home" class="schermata">
+      <div class="scheda-carta timer">
+        <div class="campo">
+          <span>Materia</span>
+          <div class="affiancati">
+            <select id="materia" aria-label="Materia"></select>
+            <button id="nuova-materia" class="tondo primario" type="button" aria-label="Aggiungi una materia"
+                    title="Aggiungi una materia">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+            </button>
+          </div>
+        </div>
+
+        <div class="interruttore" role="group" aria-label="Modalità della pausa">
+          <button type="button" data-modalita="statica" title="Tempi fissi, suona alla fine">Pomodoro</button>
+          <button type="button" data-modalita="dinamica" title="Studi quanto vuoi, la pausa cresce">Flowtime</button>
+        </div>
+
+        <!-- Pomodoro visto di fronte: il tamburo con i minuti scorre sotto l'indice. -->
+        <!-- Il pomodoro e' quello del logo (senza fascia), con sopra il tamburo vero. -->
+        <svg id="pomodoro" viewBox="0 0 391 500" role="slider" tabindex="0"
+             aria-label="Minuti di studio: trascina a destra o a sinistra, o usa le frecce"
+             aria-valuemin="1" aria-valuemax="120">
+          <defs>
+            <!-- la sagoma del pomodoro, presa dalla trasparenza dell'immagine -->
+            <mask id="sagoma" style="mask-type: alpha">
+              <image href="/static/pomodoro.webp" width="391" height="482"/>
+            </mask>
+          </defs>
+          <ellipse cx="195" cy="488" rx="140" ry="9" fill="#000" opacity=".1"/>
+          <image href="/static/pomodoro.webp" width="391" height="482"/>
+          <!-- in pausa il pomodoro torna acerbo: verde -->
+          <image href="/static/pomodoro-pausa.webp" width="391" height="482" class="buccia-pausa"/>
+          <g mask="url(#sagoma)">
+            <g id="tamburo"></g>
+            <rect x="0" y="343" width="391" height="14" fill="#5b261a"/>
+          </g>
+          <path d="M195 377 l-13 22 h26 z" fill="#fff"/>
+          <!-- frecce che invitano a far scorrere il tamburo -->
+          <g class="frecce-ghiera" fill="none" stroke="#fff" stroke-width="5" stroke-linecap="round"
+             stroke-linejoin="round">
+            <path d="M70 376 l-12 12 12 12"/>
+            <path d="M321 376 l12 12 -12 12"/>
+          </g>
+        </svg>
+        <p id="tempo" class="tempo">25:00</p>
+        <p id="etichetta" class="etichetta">Pronto</p>
+        <p id="maturata" class="maturata" hidden></p>
+
+        <div id="comandi" class="comandi"></div>
+
+        <!-- quanto manca all'obiettivo di oggi, senza cambiare schermata -->
+        <div class="oggi-home">
+          <div class="barra"><div id="home-barra"></div></div>
+          <p class="nota" id="home-oggi"></p>
+        </div>
+      </div>
+
+      <div class="scheda-carta calendario-carta">
+        <div class="mese">
+          <button id="mese-titolo" class="titolo-mese" type="button" aria-expanded="false"></button>
+          <div class="frecce">
+            <button id="mese-prima" class="tondo" type="button" aria-label="Precedente">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 6l-6 6 6 6"/></svg>
+            </button>
+            <button id="mese-dopo" class="tondo" type="button" aria-label="Successivo">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6l6 6-6 6"/></svg>
+            </button>
+          </div>
+        </div>
+        <div id="calendario" class="calendario"></div>
+        <p class="divisore"><span>Sessioni</span></p>
+        <div id="sessioni"></div>
+      </div>
+    </section>
+
+    <!-- PROGRESSI: bonsai e statistiche -->
+    <section id="progressi" class="schermata" hidden>
+      <div class="scheda-carta bonsai-carta">
+        <svg id="bonsai" viewBox="0 0 200 200" role="img" aria-label="Il tuo bonsai">
+          <ellipse cx="100" cy="194" rx="62" ry="5" fill="#000" opacity=".1"/>
+          <path d="M52 152 h96 l-10 40 h-76 z" fill="#b5653a"/>
+          <rect x="46" y="146" width="108" height="10" rx="3" fill="#9a5230"/>
+          <ellipse cx="100" cy="148" rx="50" ry="4" fill="#5a3a24"/>
+          <g data-stadi="0"><ellipse cx="100" cy="144" rx="7" ry="5" fill="#8a5a33"/></g>
+          <g data-stadi="1">
+            <path d="M100 147 Q99 135 101 126" stroke="#5f9a35" stroke-width="3" fill="none"/>
+            <ellipse cx="93" cy="126" rx="8" ry="4" fill="#7bbf4a" transform="rotate(-25 93 126)"/>
+            <ellipse cx="108" cy="124" rx="8" ry="4" fill="#7bbf4a" transform="rotate(25 108 124)"/>
+          </g>
+          <g data-stadi="2">
+            <path d="M100 147 Q96 120 102 95" stroke="#5f9a35" stroke-width="4" fill="none"/>
+            <ellipse cx="88" cy="122" rx="12" ry="5" fill="#6aae3d" transform="rotate(-25 88 122)"/>
+            <ellipse cx="113" cy="112" rx="12" ry="5" fill="#6aae3d" transform="rotate(25 113 112)"/>
+            <ellipse cx="91" cy="99" rx="11" ry="5" fill="#7bbf4a" transform="rotate(-30 91 99)"/>
+            <ellipse cx="111" cy="92" rx="10" ry="5" fill="#7bbf4a" transform="rotate(30 111 92)"/>
+          </g>
+          <g data-stadi="3 4">
+            <path d="M100 148 C92 128 112 112 98 92 C92 82 100 74 108 70" stroke="#6b4426" stroke-width="9" fill="none" stroke-linecap="round"/>
+            <path d="M99 104 C86 100 76 92 66 94" stroke="#6b4426" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <path d="M104 86 C118 84 126 78 136 80" stroke="#6b4426" stroke-width="5" fill="none" stroke-linecap="round"/>
+            <circle cx="64" cy="88" r="20" fill="#4f8f2c"/>
+            <circle cx="82" cy="80" r="18" fill="#5fa236"/>
+            <circle cx="138" cy="74" r="20" fill="#4f8f2c"/>
+            <circle cx="118" cy="66" r="18" fill="#5fa236"/>
+            <circle cx="104" cy="54" r="22" fill="#6db542"/>
+          </g>
+          <g data-stadi="4" fill="#f6a5c0">
+            <circle cx="60" cy="80" r="4"/><circle cx="76" cy="92" r="3.5"/><circle cx="88" cy="72" r="4"/>
+            <circle cx="100" cy="44" r="4"/><circle cx="114" cy="58" r="3.5"/><circle cx="124" cy="70" r="4"/>
+            <circle cx="142" cy="66" r="3.5"/><circle cx="148" cy="82" r="4"/><circle cx="70" cy="100" r="3"/>
+          </g>
+        </svg>
+        <div class="bonsai-testo">
+          <h3>Il tuo bonsai</h3>
+          <h2 id="stadio">Seme</h2>
+          <p id="stadio-testo" class="nota"></p>
+          <div class="barra"><div id="bonsai-barra"></div></div>
+          <p id="bonsai-conta" class="nota"></p>
+        </div>
+      </div>
+
+      <div class="scheda-carta riquadro">
+        <h3>Oggi</h3>
+        <div class="anello">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle cx="60" cy="60" r="50" class="anello-fondo"/>
+            <circle cx="60" cy="60" r="50" class="anello-pieno" id="oggi-anello" pathLength="100"/>
+          </svg>
+          <div>
+            <p class="numero" id="oggi-minuti">0 min</p>
+            <p class="nota" id="oggi-obiettivo"></p>
+          </div>
+        </div>
+      </div>
+      <div class="scheda-carta riquadro">
+        <h3>Serie</h3>
+        <div class="serie">
+          <p class="numero grande"><span class="fiamma" aria-hidden="true">🔥</span><span id="serie">0</span></p>
+          <p class="nota" id="serie-testo">giorni di fila</p>
+        </div>
+      </div>
+
+      <div class="scheda-carta settimane-carta">
+        <h3>Ultime settimane</h3>
+        <div id="settimane" class="colonne"></div>
+        <p class="nota legenda"><span class="tratteggio" aria-hidden="true"></span><span id="settimane-obiettivo"></span></p>
+      </div>
+
+      <div class="scheda-carta materie-carta">
+        <div class="mese">
+          <h3>Per materia</h3>
+          <select id="periodo" class="compatto" aria-label="Periodo">
+            <option value="7">Ultimi 7 giorni</option>
+            <option value="30" selected>Ultimi 30 giorni</option>
+            <option value="365">Ultimo anno</option>
+          </select>
+        </div>
+        <div id="per-materia" class="righe"></div>
+      </div>
+    </section>
+
+    <!-- IMPOSTAZIONI: profilo, preferenze, materie, dati -->
+    <section id="impostazioni" class="schermata" hidden>
+      <form id="form-impostazioni" class="scheda-carta">
+        <h3>Profilo</h3>
+        <div class="riga-campi">
+          <label class="campo"><span>Il tuo nome</span>
+            <input name="nome" maxlength="30" autocomplete="given-name" class="largo-nome"></label>
+          <label class="campo"><span>Obiettivo giornaliero</span>
+            <span class="con-unita"><input name="obiettivo_min" type="number" min="1" max="1440" required
+                   inputmode="numeric" class="largo-numero"><span>min</span></span></label>
+        </div>
+
+        <h3>Pausa</h3>
+        <label class="campo"><span>Modalità</span>
+          <select name="modalita" class="largo-scelta">
+            <option value="statica">Statica · come il Pomodoro</option>
+            <option value="dinamica">Dinamica · come il Flowtime</option>
+          </select></label>
+        <p class="nota" id="spiega-modalita"></p>
+
+        <div class="riga-campi in-fondo">
+          <label class="campo solo-statica"><span>Studio</span>
+            <span class="con-unita"><input name="studio_min" type="number" min="1" max="120" required
+                   inputmode="numeric" class="largo-numero"><span>min</span></span></label>
+          <label class="campo solo-statica"><span>Pausa</span>
+            <span class="con-unita"><input name="pausa_min" type="number" min="1" max="60" required
+                   inputmode="numeric" class="largo-numero"><span>min</span></span></label>
+          <button class="primario">Salva</button>
+        </div>
+      </form>
+
+      <div class="scheda-carta">
+        <h3>Materie</h3>
+        <form id="form-materia" class="riga-campi">
+          <input name="nome" placeholder="Nuova materia" maxlength="50" required
+                 aria-label="Nome della nuova materia" class="largo-nome">
+          <button class="primario">Aggiungi</button>
+        </form>
+        <ul id="elenco-materie" class="elenco"></ul>
+      </div>
+
+      <div class="scheda-carta dati">
+        <div>
+          <h3>I tuoi dati</h3>
+          <p class="nota">Tutte le sessioni in un file CSV da aprire con Excel: materia, giorno, orari e minuti.</p>
+        </div>
+        <a class="pulsante" href="/export.csv" download>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+          Scarica il CSV
+        </a>
+      </div>
+
+      <p class="versione">FlowStudy {{versione}} ·
+        <a href="https://github.com/MattiaFarci28/FlowStudy" target="_blank" rel="noopener">codice sorgente</a></p>
+    </section>
+  </main>
+
+  <dialog id="dialogo">
+    <form method="dialog">
+      <p id="dialogo-testo"></p>
+      <input id="dialogo-campo" maxlength="50" aria-label="Nome" hidden>
+      <div id="dialogo-scelte" class="comandi"></div>
+    </form>
+  </dialog>
+  <div id="avviso" class="avviso" role="status" aria-live="polite"></div>
+
+  <script src="/static/app.js?v={{versione}}"></script>
+</body>
+</html>

@@ -45,5 +45,5 @@ def test_una_sessione_di_studio_completa(client):
     assert client.post("/timer/termina").json()["attivo"] is False
 
     assert client.get("/statistiche").status_code == 200
-    assert client.get("/export.csv").text.startswith("materia,inizio,fine,durata_s")
+    assert client.get("/export.csv").content.decode("utf-8-sig").startswith("Materia;Giorno;Inizio;Fine;Minuti")
     assert client.delete(f"/materie/{materia['id']}").status_code == 204
