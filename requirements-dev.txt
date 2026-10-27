@@ -18,3 +18,4 @@ httpx2==2.16.0
 
 # Verifica statica: analizza il codice senza eseguirlo.
 ruff==0.14.6
+mypy==2.4.0

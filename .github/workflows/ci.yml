@@ -5,6 +5,8 @@
 #   2. container -> costruisce l'immagine, la avvia e la prova via rete
 # Solo su main e sui tag di versione (v1.0.0, ...), se tutto e' passato:
 #   3. pubblica l'immagine su GitHub Container Registry (ghcr.io)
+# Solo sui tag di versione:
+#   4. crea la release su GitHub, con le note generate dai commit
 #
 # Ogni passo parte solo se il precedente e' riuscito: un errore ferma la
 # pipeline e nessuna immagine difettosa viene pubblicata.
@@ -28,6 +30,16 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
+      # Su un tag di versione, il tag deve dire la stessa versione del progetto
+      # (v1.0.0 <-> 1.0.0): si controlla subito, prima di pubblicare qualsiasi cosa.
+      - name: Controllo della versione
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSIONE=$(python3 -c "import tomllib; print(tomllib.load(open('pyproject.toml', 'rb'))['project']['version'])")
+          if [ "$GITHUB_REF_NAME" != "v$VERSIONE" ]; then
+            echo "Il tag $GITHUB_REF_NAME non corrisponde alla versione $VERSIONE di pyproject.toml"; exit 1
+          fi
+
       - uses: actions/setup-python@v7
         with:
           python-version: "3.12"
@@ -39,6 +51,9 @@ jobs:
 
       - name: Analisi statica (ruff)
         run: ruff check
+
+      - name: Controllo dei tipi (mypy)
+        run: mypy
 
       # La copertura si raccoglie in due passi e si somma: la soglia del 95%
       # (pyproject.toml) si controlla alla fine, sul totale.
@@ -119,3 +134,21 @@ jobs:
             docker tag flowstudy:ci "$IMMAGINE:$e"
             docker push "$IMMAGINE:$e"
           done
+
+  rilascio:
+    name: Release
+    needs: container
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+
+      # gh e' gia' installato sui runner di GitHub: niente azioni di terze parti.
+      - name: Creazione della release
+        run: |
+          gh release create "$GITHUB_REF_NAME" --title "FlowStudy $GITHUB_REF_NAME" --generate-notes \
+            --notes "Immagine del container: \`docker run -d -p 8000:8000 -v flowstudy-dati:/dati ghcr.io/${GITHUB_REPOSITORY,,}:${GITHUB_REF_NAME#v}\`"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

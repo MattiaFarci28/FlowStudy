@@ -116,5 +116,5 @@ Non riguardano cosa fa l'app, ma come è costruita e con quali strumenti.
 - **RNF2 — Tempo.** Le durate sono numeri interi di secondi. Gli istanti si salvano con il loro fuso orario e i giorni si calcolano sull'ora italiana, ora legale compresa.
 - **RNF3 — Regole separate dal resto.** Le regole dell'app (pause, statistiche, serie, bonsai) stanno in un modulo che non guarda mai l'orologio e non tocca il database: l'ora attuale gli arriva come parametro. Così ogni regola si può provare in qualsiasi momento, anche a mezzanotte o la notte del cambio dell'ora.
 - **RNF4 — Container.** Il servizio gira in un container Docker con Python 3.12.
-- **RNF5 — Controlli automatici.** A ogni modifica pubblicata sul repository partono da soli i test, la misura della copertura e l'analisi statica del codice. Se va tutto bene, viene prodotta l'immagine del container.
+- **RNF5 — Controlli automatici.** A ogni modifica pubblicata sul repository partono da soli i test, la misura della copertura, l'analisi statica e il controllo dei tipi. Se va tutto bene, viene prodotta l'immagine del container; quando si marca una nuova versione (per esempio `v1.0.0`) viene pubblicata anche la release.
 - **RNF6 — Interfaccia.** L'interfaccia è una pagina web servita dallo stesso servizio, divisa nelle tre schermate descritte sopra. Il pomodoro e il bonsai sono disegnati in SVG.

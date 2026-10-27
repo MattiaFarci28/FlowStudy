@@ -1,7 +1,7 @@
 [project]
 name = "flowstudy"
-version = "0.1.0"
-description = "Timer di studio con pause proporzionali al tempo studiato, sessioni per materia e statistiche."
+version = "1.0.0"
+description = "Timer di studio con pausa fissa (Pomodoro) o proporzionale allo studio (Flowtime), sessioni per materia, statistiche e un bonsai che cresce con la costanza."
 requires-python = ">=3.12"
 
 [tool.pytest.ini_options]
@@ -35,6 +35,17 @@ show_missing = true
 # copertura e' al 100%: il margine serve a non bloccare il lavoro per una
 # riga difensiva, non ad abbassare l'asticella.
 fail_under = 95
+
+# --- Controllo dei tipi ------------------------------------------------------
+#   mypy                  controlla che i tipi dichiarati nel codice siano rispettati
+
+[tool.mypy]
+python_version = "3.12"
+files = ["src"]
+# Segnala i "type: ignore" diventati inutili e i valori di tipo Any restituiti
+# dove la funzione dichiara un tipo preciso.
+warn_unused_ignores = true
+warn_return_any = true
 
 # --- Analisi statica ---------------------------------------------------------
 #   ruff check            segnala i problemi
