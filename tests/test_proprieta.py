@@ -9,6 +9,7 @@ compaiono qui come proprieta' (A1-A4, T1, T2).
 import csv
 import io
 from datetime import UTC, date, datetime, timedelta
+from itertools import pairwise
 
 from hypothesis import given
 from hypothesis import strategies as st
@@ -210,7 +211,7 @@ def test_qualsiasi_sequenza_di_eventi_rispetta_lo_statechart(imp, inizio, passi)
 
     # Confronti in UTC: fra istanti con lo stesso fuso Python ignora l'ora legale.
     salvate = [(s.inizio.astimezone(UTC), s.fine.astimezone(UTC), s) for s in salvate if s]
-    for (_, fine, _), (inizio_dopo, _, _) in zip(salvate, salvate[1:]):
+    for (_, fine, _), (inizio_dopo, _, _) in pairwise(salvate):
         assert fine <= inizio_dopo
     assert all(inizio <= da and a <= adesso for da, a, _ in salvate)
     salvate = [s for _, _, s in salvate]

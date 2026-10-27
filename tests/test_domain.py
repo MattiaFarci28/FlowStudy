@@ -84,7 +84,7 @@ def test_chiave_nome_ignora_maiuscole_e_spazi():
 # --- Impostazioni ----------------------------------------------------------
 
 def test_impostazioni_predefinite():
-    assert STATICA == Impostazioni(Modalita.STATICA, 25, 5, 120, "")
+    assert Impostazioni() == Impostazioni(Modalita.STATICA, 25, 5, 120, "")
 
 
 @pytest.mark.parametrize("campi", [

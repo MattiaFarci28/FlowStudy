@@ -42,6 +42,19 @@ dell'API è su http://localhost:8000/docs. I dati vengono salvati nel file
 `FLOWSTUDY_DB` (per esempio `sqlite:///altro.db`).
 
 
+## Verifica
+
+```bash
+pytest                         # tutti i test
+pytest -m "not integrazione"   # solo test di unità e property-based
+pytest -m integrazione         # solo test di integrazione (database e API)
+pytest --cov                   # test con misura della copertura (soglia 95%)
+ruff check                     # analisi statica del codice
+```
+
+La configurazione di pytest, della copertura e di ruff è in `pyproject.toml`.
+
+
 ## Licenza
 
 MIT, vedi [LICENSE](LICENSE).

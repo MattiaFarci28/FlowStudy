@@ -15,3 +15,39 @@ testpaths = ["tests"]
 markers = ["integrazione: test che coinvolgono database e API insieme al dominio"]
 # Un marcatore scritto male deve dare errore, non passare inosservato.
 addopts = "--strict-markers"
+
+# --- Copertura ---------------------------------------------------------------
+#   pytest --cov                    tabella nel terminale
+#   pytest --cov --cov-report=html  pagina navigabile in htmlcov/index.html
+
+[tool.coverage.run]
+source = ["src"]
+# Misura anche i rami: ogni if deve essere percorso sia nel caso vero sia
+# in quello falso, non basta che la riga venga eseguita.
+branch = true
+
+[tool.coverage.report]
+show_missing = true
+# Sotto questa soglia la misura fallisce, e con lei la pipeline. Oggi la
+# copertura e' al 100%: il margine serve a non bloccare il lavoro per una
+# riga difensiva, non ad abbassare l'asticella.
+fail_under = 95
+
+# --- Analisi statica ---------------------------------------------------------
+#   ruff check            segnala i problemi
+#   ruff check --fix      corregge quelli sistemabili in automatico
+
+[tool.ruff]
+target-version = "py312"
+line-length = 120
+
+[tool.ruff.lint]
+select = [
+    "E", "W",   # stile PEP 8 (pycodestyle)
+    "F",        # errori certi: import inutili, nomi non definiti (pyflakes)
+    "I",        # ordine degli import
+    "B",        # costrutti che nascondono bug (bugbear)
+    "UP",       # sintassi moderna per Python 3.12 (pyupgrade)
+    "SIM",      # codice semplificabile
+    "C4",       # comprensioni scritte bene
+]
