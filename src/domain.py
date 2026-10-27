@@ -14,15 +14,19 @@ Convenzioni valide per tutto il modulo:
 I riferimenti RFn rimandano a docs/01-requisiti.md.
 """
 
+import csv
+import io
+from collections import Counter
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass
-from datetime import date, datetime
+from dataclasses import dataclass, replace
+from datetime import UTC, date, datetime, time, timedelta
 from enum import Enum
 from zoneinfo import ZoneInfo
 
 FUSO = ZoneInfo("Europe/Rome")
 
 NOME_MAX = 50                # caratteri del nome di una materia (RF1)
+NOME_PROFILO_MAX = 30        # caratteri del nome nel profilo (RF6)
 RAPPORTO_PAUSA = 5           # modalita' dinamica: 1 secondo di pausa ogni 5 di studio (RF10)
 PAUSA_MASSIMA_S = 30 * 60    # tetto della pausa dinamica (RF10)
 GIORNI_BONSAI = 30           # finestra della costanza per il bonsai (RF20)
@@ -30,6 +34,21 @@ GIORNI_BONSAI = 30           # finestra della costanza per il bonsai (RF20)
 
 class TransizioneNonValida(Exception):
     """Evento non ammesso nello stato corrente del timer (RF8)."""
+
+
+def _utc(istante: datetime) -> datetime:
+    """Converte in UTC prima di confrontare, sottrarre o sommare istanti.
+
+    Python esegue queste operazioni sull'ora "da orologio" quando due istanti
+    hanno lo stesso fuso: la notte del cambio dell'ora sbaglierebbe di un'ora.
+    In UTC l'ora non salta mai.
+    """
+    return istante.astimezone(UTC)
+
+
+def _secondi(da: datetime, a: datetime) -> int:
+    """Secondi reali trascorsi da ``da`` ad ``a``."""
+    return int((_utc(a) - _utc(da)).total_seconds())
 
 
 # --- Materie ---------------------------------------------------------------
@@ -42,7 +61,10 @@ def normalizza_nome(nome: str) -> str:
     Solleva: ValueError se il risultato ha meno di 1 o piu' di NOME_MAX
              caratteri.
     """
-    raise NotImplementedError
+    pulito = nome.strip()
+    if not 1 <= len(pulito) <= NOME_MAX:
+        raise ValueError(f"il nome deve avere da 1 a {NOME_MAX} caratteri")
+    return pulito
 
 
 def chiave_nome(nome: str) -> str:
@@ -54,7 +76,7 @@ def chiave_nome(nome: str) -> str:
     Post: restituisce ``normalizza_nome(nome)`` senza distinzione fra maiuscole
           e minuscole; ``chiave_nome("Analisi") == chiave_nome(" analisi ")``.
     """
-    raise NotImplementedError
+    return normalizza_nome(nome).casefold()
 
 
 # --- Impostazioni ----------------------------------------------------------
@@ -81,6 +103,16 @@ class Impostazioni:
     obiettivo_min: int = 120
     nome: str = ""
 
+    def __post_init__(self) -> None:
+        if not 1 <= self.studio_min <= 120:
+            raise ValueError("il tempo di studio deve essere fra 1 e 120 minuti")
+        if not 1 <= self.pausa_min <= 60:
+            raise ValueError("il tempo di pausa deve essere fra 1 e 60 minuti")
+        if not 1 <= self.obiettivo_min <= 1440:
+            raise ValueError("l'obiettivo deve essere fra 1 e 1440 minuti")
+        if len(self.nome) > NOME_PROFILO_MAX:
+            raise ValueError(f"il nome deve avere al massimo {NOME_PROFILO_MAX} caratteri")
+
 
 def pausa_spettante(durata_studio_s: int, impostazioni: Impostazioni) -> int:
     """Durata in secondi della pausa concessa dopo una sessione (RF10).
@@ -88,10 +120,12 @@ def pausa_spettante(durata_studio_s: int, impostazioni: Impostazioni) -> int:
     Pre:  durata_studio_s >= 0.
     Post: in modalita' statica restituisce ``impostazioni.pausa_min * 60``;
           in modalita' dinamica restituisce
-          ``min(durata_studio_s // RAPPORTO_PAUSA, PAUSA_MASSIMA_S)``.
-          In entrambi i casi 0 <= risultato <= PAUSA_MASSIMA_S.
+          ``min(durata_studio_s // RAPPORTO_PAUSA, PAUSA_MASSIMA_S)``,
+          quindi 0 <= risultato <= PAUSA_MASSIMA_S.
     """
-    raise NotImplementedError
+    if impostazioni.modalita is Modalita.STATICA:
+        return impostazioni.pausa_min * 60
+    return min(durata_studio_s // RAPPORTO_PAUSA, PAUSA_MASSIMA_S)
 
 
 # --- Timer -----------------------------------------------------------------
@@ -108,11 +142,16 @@ class Sessione:
     """Tratto continuo di studio su una materia (RF13).
 
     Invariante: ``inizio < fine``.
+    Solleva: ValueError alla creazione se l'invariante non vale.
     """
 
     materia_id: int
     inizio: datetime
     fine: datetime
+
+    def __post_init__(self) -> None:
+        if _utc(self.inizio) >= _utc(self.fine):
+            raise ValueError("una sessione deve finire dopo il suo inizio")
 
 
 def durata(sessione: Sessione) -> int:
@@ -121,7 +160,7 @@ def durata(sessione: Sessione) -> int:
     Pre:  nessuna.
     Post: restituisce ``(fine - inizio)`` in secondi, sempre > 0.
     """
-    raise NotImplementedError
+    return _secondi(sessione.inizio, sessione.fine)
 
 
 @dataclass(frozen=True)
@@ -132,6 +171,7 @@ class Timer:
     - ``inizio_sessione`` e' valorizzato se e solo se ``stato`` e' STUDIO;
     - ``fine_pausa`` e' valorizzato se e solo se ``stato`` e' PAUSA.
     Le impostazioni sono quelle in vigore all'avvio e non cambiano (RF7).
+    Solleva: ValueError alla creazione se l'invariante non vale.
     """
 
     materia_id: int
@@ -139,6 +179,31 @@ class Timer:
     stato: Stato = Stato.PRONTO
     inizio_sessione: datetime | None = None
     fine_pausa: datetime | None = None
+
+    def __post_init__(self) -> None:
+        if (self.stato is Stato.STUDIO) != (self.inizio_sessione is not None):
+            raise ValueError("inizio_sessione va indicato solo in STUDIO")
+        if (self.stato is Stato.PAUSA) != (self.fine_pausa is not None):
+            raise ValueError("fine_pausa va indicata solo in PAUSA")
+
+
+def _richiedi(timer: Timer, evento: str, *ammessi: Stato) -> None:
+    if timer.stato not in ammessi:
+        raise TransizioneNonValida(f"'{evento}' non e' ammesso nello stato {timer.stato.value}")
+
+
+def _chiudi_sessione(timer: Timer, fine: datetime) -> Sessione | None:
+    """Uscita da STUDIO: la sessione aperta, o None se ha durata nulla (RF13)."""
+    if _secondi(timer.inizio_sessione, fine) <= 0:
+        return None
+    return Sessione(timer.materia_id, timer.inizio_sessione, fine)
+
+
+def _scadenza_studio(timer: Timer) -> datetime | None:
+    """Istante in cui scade lo studio: esiste solo in STUDIO statico."""
+    if timer.stato is Stato.STUDIO and timer.impostazioni.modalita is Modalita.STATICA:
+        return _utc(timer.inizio_sessione) + timedelta(minutes=timer.impostazioni.studio_min)
+    return None
 
 
 # Precondizioni comuni agli eventi del timer (avvia, pausa, riprendi, termina):
@@ -154,7 +219,8 @@ def avvia(timer: Timer, adesso: datetime) -> Timer:
     Post: restituisce il timer in STUDIO con ``inizio_sessione == adesso``.
     Solleva: TransizioneNonValida se ``timer.stato`` non e' PRONTO.
     """
-    raise NotImplementedError
+    _richiedi(timer, "avvia", Stato.PRONTO)
+    return replace(timer, stato=Stato.STUDIO, inizio_sessione=adesso)
 
 
 def pausa(timer: Timer, adesso: datetime) -> tuple[Timer, Sessione | None]:
@@ -166,7 +232,11 @@ def pausa(timer: Timer, adesso: datetime) -> tuple[Timer, Sessione | None]:
           (RF13). ``fine_pausa == adesso + pausa_spettante(durata studiata)``.
     Solleva: TransizioneNonValida se ``timer.stato`` non e' STUDIO.
     """
-    raise NotImplementedError
+    _richiedi(timer, "pausa", Stato.STUDIO)
+    sessione = _chiudi_sessione(timer, adesso)
+    studiato = durata(sessione) if sessione else 0
+    fine_pausa = _utc(adesso) + timedelta(seconds=pausa_spettante(studiato, timer.impostazioni))
+    return replace(timer, stato=Stato.PAUSA, inizio_sessione=None, fine_pausa=fine_pausa), sessione
 
 
 def riprendi(timer: Timer, adesso: datetime) -> Timer:
@@ -177,7 +247,8 @@ def riprendi(timer: Timer, adesso: datetime) -> Timer:
           la pausa residua viene persa.
     Solleva: TransizioneNonValida se ``timer.stato`` non e' PAUSA.
     """
-    raise NotImplementedError
+    _richiedi(timer, "riprendi", Stato.PAUSA)
+    return replace(timer, stato=Stato.STUDIO, inizio_sessione=adesso, fine_pausa=None)
 
 
 def termina(timer: Timer, adesso: datetime) -> tuple[Timer, Sessione | None]:
@@ -189,7 +260,9 @@ def termina(timer: Timer, adesso: datetime) -> tuple[Timer, Sessione | None]:
           nulla); negli altri casi None.
     Solleva: TransizioneNonValida se ``timer.stato`` e' CONCLUSO.
     """
-    raise NotImplementedError
+    _richiedi(timer, "termina", Stato.PRONTO, Stato.STUDIO, Stato.PAUSA)
+    sessione = _chiudi_sessione(timer, adesso) if timer.stato is Stato.STUDIO else None
+    return replace(timer, stato=Stato.CONCLUSO, inizio_sessione=None, fine_pausa=None), sessione
 
 
 def aggiorna(timer: Timer, adesso: datetime) -> tuple[Timer, Sessione | None, bool]:
@@ -209,7 +282,16 @@ def aggiorna(timer: Timer, adesso: datetime) -> tuple[Timer, Sessione | None, bo
           ``aggiorna`` e' idempotente: applicarla due volte con lo stesso
           ``adesso`` equivale ad applicarla una volta.
     """
-    raise NotImplementedError
+    sessione = None
+    suona = False
+    scadenza = _scadenza_studio(timer)
+    if scadenza is not None and _utc(adesso) >= scadenza:
+        timer, sessione = pausa(timer, scadenza)
+        suona = True
+    if timer.stato is Stato.PAUSA and _utc(adesso) >= _utc(timer.fine_pausa):
+        timer = replace(timer, stato=Stato.PRONTO, fine_pausa=None)
+        suona = True
+    return timer, sessione, suona
 
 
 def secondi_rimanenti(timer: Timer, adesso: datetime) -> int | None:
@@ -220,7 +302,10 @@ def secondi_rimanenti(timer: Timer, adesso: datetime) -> int | None:
           sempre > 0; negli altri casi (STUDIO dinamico, PRONTO, CONCLUSO)
           restituisce None, perche' non c'e' una scadenza.
     """
-    raise NotImplementedError
+    scadenza = _scadenza_studio(timer) or timer.fine_pausa
+    if scadenza is None:
+        return None
+    return _secondi(adesso, scadenza)
 
 
 # --- Giorni e statistiche --------------------------------------------------
@@ -231,7 +316,7 @@ def giorno_di(istante: datetime) -> date:
     Pre:  ``istante`` ha il fuso orario.
     Post: restituisce la data di ``istante`` convertito in FUSO.
     """
-    raise NotImplementedError
+    return istante.astimezone(FUSO).date()
 
 
 def ripartisci_per_giorno(sessione: Sessione) -> dict[date, int]:
@@ -243,7 +328,17 @@ def ripartisci_per_giorno(sessione: Sessione) -> dict[date, int]:
           ``sum(risultato.values()) == durata(sessione)``.
           Esempio: 23:00 -> 00:30 da' {primo giorno: 3600, secondo: 1800}.
     """
-    raise NotImplementedError
+    quote = {}
+    giorno = giorno_di(sessione.inizio)
+    da = _utc(sessione.inizio)
+    fine = _utc(sessione.fine)
+    while da < fine:
+        mezzanotte = _utc(datetime.combine(giorno + timedelta(days=1), time(), tzinfo=FUSO))
+        a = min(mezzanotte, fine)
+        quote[giorno] = _secondi(da, a)
+        da = a
+        giorno += timedelta(days=1)
+    return quote
 
 
 def studio_per_giorno(sessioni: Iterable[Sessione]) -> dict[date, int]:
@@ -254,7 +349,10 @@ def studio_per_giorno(sessioni: Iterable[Sessione]) -> dict[date, int]:
           ``ripartisci_per_giorno(s).get(g, 0)`` sulle sessioni; compaiono solo
           i giorni con valore > 0. Con nessuna sessione restituisce {}.
     """
-    raise NotImplementedError
+    totale = Counter()
+    for sessione in sessioni:
+        totale.update(ripartisci_per_giorno(sessione))
+    return dict(totale)
 
 
 def studio_per_settimana(sessioni: Iterable[Sessione]) -> dict[date, int]:
@@ -265,7 +363,10 @@ def studio_per_settimana(sessioni: Iterable[Sessione]) -> dict[date, int]:
           ``studio_per_giorno`` sui sette giorni che iniziano da quel lunedi'.
           La somma dei valori e' uguale a quella di ``studio_per_giorno``.
     """
-    raise NotImplementedError
+    totale = Counter()
+    for giorno, secondi in studio_per_giorno(sessioni).items():
+        totale[giorno - timedelta(days=giorno.weekday())] += secondi
+    return dict(totale)
 
 
 def studio_per_materia(sessioni: Iterable[Sessione], dal: date, al: date) -> dict[int, int]:
@@ -277,7 +378,14 @@ def studio_per_materia(sessioni: Iterable[Sessione], dal: date, al: date) -> dic
           le materie con valore > 0.
     Solleva: ValueError se dal > al.
     """
-    raise NotImplementedError
+    if dal > al:
+        raise ValueError("l'intervallo deve iniziare prima di finire")
+    totale = Counter()
+    for sessione in sessioni:
+        for giorno, secondi in ripartisci_per_giorno(sessione).items():
+            if dal <= giorno <= al:
+                totale[sessione.materia_id] += secondi
+    return dict(totale)
 
 
 def sessioni_del_giorno(sessioni: Iterable[Sessione], giorno: date) -> list[Sessione]:
@@ -288,7 +396,7 @@ def sessioni_del_giorno(sessioni: Iterable[Sessione], giorno: date) -> list[Sess
           ``ripartisci_per_giorno(s)``. Tolte queste, lo studio di ``giorno``
           e' zero.
     """
-    raise NotImplementedError
+    return [s for s in sessioni if giorno in ripartisci_per_giorno(s)]
 
 
 # --- Obiettivo, serie e bonsai ---------------------------------------------
@@ -299,7 +407,7 @@ def giorni_con_obiettivo(per_giorno: Mapping[date, int], obiettivo_min: int) -> 
     Pre:  obiettivo_min >= 1.
     Post: restituisce i giorni ``g`` con ``per_giorno[g] >= obiettivo_min * 60``.
     """
-    raise NotImplementedError
+    return {g for g, secondi in per_giorno.items() if secondi >= obiettivo_min * 60}
 
 
 def serie(giorni_ok: set[date], oggi: date) -> int:
@@ -310,7 +418,12 @@ def serie(giorni_ok: set[date], oggi: date) -> int:
           terminano ieri, restituisce ``n + 1`` se ``oggi`` e' in ``giorni_ok``,
           altrimenti ``n``. I giorni successivi a ``oggi`` sono ignorati.
     """
-    raise NotImplementedError
+    n = 0
+    giorno = oggi - timedelta(days=1)
+    while giorno in giorni_ok:
+        n += 1
+        giorno -= timedelta(days=1)
+    return n + (oggi in giorni_ok)
 
 
 class Stadio(Enum):
@@ -319,6 +432,15 @@ class Stadio(Enum):
     PIANTINA = "piantina"
     ALBERELLO = "alberello"
     BONSAI_FIORITO = "bonsai fiorito"
+
+
+# Giorni minimi per ogni stadio, dal piu' alto al piu' basso (RF20).
+_SOGLIE_BONSAI = (
+    (20, Stadio.BONSAI_FIORITO),
+    (10, Stadio.ALBERELLO),
+    (4, Stadio.PIANTINA),
+    (1, Stadio.GERMOGLIO),
+)
 
 
 def stadio_bonsai(giorni_ok: set[date], oggi: date) -> Stadio:
@@ -331,7 +453,12 @@ def stadio_bonsai(giorni_ok: set[date], oggi: date) -> Stadio:
           10 <= k <= 19, BONSAI_FIORITO se k >= 20.
           Monotonia: aggiungere giorni a ``giorni_ok`` non abbassa lo stadio.
     """
-    raise NotImplementedError
+    primo = oggi - timedelta(days=GIORNI_BONSAI - 1)
+    k = sum(1 for g in giorni_ok if primo <= g <= oggi)
+    for soglia, stadio in _SOGLIE_BONSAI:
+        if k >= soglia:
+            return stadio
+    return Stadio.SEME
 
 
 # --- Esportazione ----------------------------------------------------------
@@ -345,4 +472,14 @@ def esporta_csv(sessioni: Iterable[Sessione], nomi: Mapping[int, str]) -> str:
           nell'ora italiana. Un nome che contiene virgole o virgolette e'
           racchiuso fra virgolette secondo le regole del formato CSV.
     """
-    raise NotImplementedError
+    testo = io.StringIO()
+    scrittore = csv.writer(testo, lineterminator="\n")
+    scrittore.writerow(["materia", "inizio", "fine", "durata_s"])
+    for s in sorted(sessioni, key=lambda s: _utc(s.inizio)):
+        scrittore.writerow([
+            nomi[s.materia_id],
+            s.inizio.astimezone(FUSO).isoformat(),
+            s.fine.astimezone(FUSO).isoformat(),
+            durata(s),
+        ])
+    return testo.getvalue()
