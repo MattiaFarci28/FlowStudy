@@ -1,0 +1,21 @@
+# Avvio di FlowStudy con un solo comando (RNF4):
+#
+#   docker compose up -d      costruisce l'immagine e avvia il servizio
+#   docker compose down       lo ferma (i dati restano nel volume)
+#
+# Il servizio risponde su http://localhost:8000.
+
+services:
+  flowstudy:
+    build: .
+    image: flowstudy
+    ports:
+      - "8000:8000"
+    volumes:
+      - flowstudy-dati:/dati
+    restart: unless-stopped
+
+volumes:
+  flowstudy-dati:
+    # Stesso nome del volume usato con "docker run": i dati sono gli stessi.
+    name: flowstudy-dati

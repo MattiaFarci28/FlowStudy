@@ -194,14 +194,17 @@ def _richiedi(timer: Timer, evento: str, *ammessi: Stato) -> None:
 
 def _chiudi_sessione(timer: Timer, fine: datetime) -> Sessione | None:
     """Uscita da STUDIO: la sessione aperta, o None se ha durata nulla (RF13)."""
-    if _secondi(timer.inizio_sessione, fine) <= 0:
+    inizio = timer.inizio_sessione
+    assert inizio is not None, "si esce da STUDIO, dove inizio_sessione c'e' sempre"
+    if _secondi(inizio, fine) <= 0:
         return None
-    return Sessione(timer.materia_id, timer.inizio_sessione, fine)
+    return Sessione(timer.materia_id, inizio, fine)
 
 
 def _scadenza_studio(timer: Timer) -> datetime | None:
     """Istante in cui scade lo studio: esiste solo in STUDIO statico."""
-    if timer.stato is Stato.STUDIO and timer.impostazioni.modalita is Modalita.STATICA:
+    # inizio_sessione c'e' se e solo se il timer e' in STUDIO (invariante di Timer)
+    if timer.inizio_sessione is not None and timer.impostazioni.modalita is Modalita.STATICA:
         return _utc(timer.inizio_sessione) + timedelta(minutes=timer.impostazioni.studio_min)
     return None
 
@@ -288,7 +291,8 @@ def aggiorna(timer: Timer, adesso: datetime) -> tuple[Timer, Sessione | None, bo
     if scadenza is not None and _utc(adesso) >= scadenza:
         timer, sessione = pausa(timer, scadenza)
         suona = True
-    if timer.stato is Stato.PAUSA and _utc(adesso) >= _utc(timer.fine_pausa):
+    # fine_pausa c'e' se e solo se il timer e' in PAUSA (invariante di Timer)
+    if timer.fine_pausa is not None and _utc(adesso) >= _utc(timer.fine_pausa):
         timer = replace(timer, stato=Stato.PRONTO, fine_pausa=None)
         suona = True
     return timer, sessione, suona
@@ -349,7 +353,7 @@ def studio_per_giorno(sessioni: Iterable[Sessione]) -> dict[date, int]:
           ``ripartisci_per_giorno(s).get(g, 0)`` sulle sessioni; compaiono solo
           i giorni con valore > 0. Con nessuna sessione restituisce {}.
     """
-    totale = Counter()
+    totale: Counter[date] = Counter()
     for sessione in sessioni:
         totale.update(ripartisci_per_giorno(sessione))
     return dict(totale)
@@ -363,7 +367,7 @@ def studio_per_settimana(sessioni: Iterable[Sessione]) -> dict[date, int]:
           ``studio_per_giorno`` sui sette giorni che iniziano da quel lunedi'.
           La somma dei valori e' uguale a quella di ``studio_per_giorno``.
     """
-    totale = Counter()
+    totale: Counter[date] = Counter()
     for giorno, secondi in studio_per_giorno(sessioni).items():
         totale[giorno - timedelta(days=giorno.weekday())] += secondi
     return dict(totale)
@@ -380,7 +384,7 @@ def studio_per_materia(sessioni: Iterable[Sessione], dal: date, al: date) -> dic
     """
     if dal > al:
         raise ValueError("l'intervallo deve iniziare prima di finire")
-    totale = Counter()
+    totale: Counter[int] = Counter()
     for sessione in sessioni:
         for giorno, secondi in ripartisci_per_giorno(sessione).items():
             if dal <= giorno <= al:

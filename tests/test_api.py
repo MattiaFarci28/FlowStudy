@@ -7,7 +7,9 @@ un'assenza.
 """
 
 import codecs
+import tomllib
 from datetime import UTC, datetime, timedelta
+from pathlib import Path
 
 import pytest
 from fastapi.testclient import TestClient
@@ -344,6 +346,11 @@ def test_la_pagina_web_e_servita(client):
 
 
 # --- Configurazione --------------------------------------------------------
+
+def test_la_versione_dell_app_e_quella_del_progetto(client):
+    progetto = tomllib.loads((Path(__file__).parents[1] / "pyproject.toml").read_text(encoding="utf-8"))
+    assert client.get("/openapi.json").json()["info"]["version"] == progetto["project"]["version"]
+
 
 def test_l_orologio_vero_da_l_ora_utc_al_secondo():
     adesso = orologio()

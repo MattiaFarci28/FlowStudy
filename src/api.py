@@ -104,7 +104,7 @@ def _timer(timer: Timer | None, adesso: datetime, suona: bool) -> dict:
         return {"attivo": False, "suona": suona}
     # In modalita' dinamica, la pausa che spetterebbe fermandosi adesso (RF10).
     maturata = None
-    if timer.stato is Stato.STUDIO and timer.impostazioni.modalita is Modalita.DINAMICA:
+    if timer.inizio_sessione is not None and timer.impostazioni.modalita is Modalita.DINAMICA:  # cioe' in STUDIO
         studiato = int((adesso - timer.inizio_sessione).total_seconds())
         maturata = pausa_spettante(studiato, timer.impostazioni)
     return {
@@ -154,7 +154,7 @@ EVENTI = {"avvia": avvia, "pausa": pausa, "riprendi": riprendi, "termina": termi
 
 
 def crea_app(url: str | None = None) -> FastAPI:
-    app = FastAPI(title="FlowStudy", version="0.1.0")
+    app = FastAPI(title="FlowStudy", version="1.0.0")    # uguale a pyproject.toml (lo controlla un test)
     app.state.motore = dbm.crea_motore(url or os.environ.get("FLOWSTUDY_DB", DB_PREDEFINITO))
 
     app.add_exception_handler(dbm.NonTrovata, _errore(404))
