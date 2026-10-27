@@ -1,0 +1,7 @@
+# Al build serve solo cio' che il Dockerfile copia: si esclude tutto e si
+# riammettono i file necessari. Cosi' nell'immagine non finiscono per errore
+# venv, database locali, test o file personali.
+*
+!requirements.txt
+!src/
+**/__pycache__

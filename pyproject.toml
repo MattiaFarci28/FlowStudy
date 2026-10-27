@@ -12,7 +12,10 @@ testpaths = ["tests"]
 # I test di integrazione (database, API) si possono lanciare a parte:
 #   pytest -m integrazione        solo quelli
 #   pytest -m "not integrazione"  solo i test di unita'
-markers = ["integrazione: test che coinvolgono database e API insieme al dominio"]
+markers = [
+    "integrazione: test che coinvolgono database e API insieme al dominio",
+    "container: test sul container in esecuzione (richiedono FLOWSTUDY_URL)",
+]
 # Un marcatore scritto male deve dare errore, non passare inosservato.
 addopts = "--strict-markers"
 

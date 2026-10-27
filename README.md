@@ -42,6 +42,25 @@ dell'API è su http://localhost:8000/docs. I dati vengono salvati nel file
 `FLOWSTUDY_DB` (per esempio `sqlite:///altro.db`).
 
 
+## Container
+
+```bash
+docker build -t flowstudy .
+docker run -d -p 8000:8000 -v flowstudy-dati:/dati --name flowstudy flowstudy
+```
+
+Il servizio risponde su http://localhost:8000. I dati stanno nel volume
+`flowstudy-dati` e restano anche se il container viene eliminato e ricreato.
+L'immagine contiene solo le dipendenze di esecuzione e il codice in `src/`,
+e il servizio gira con un utente senza privilegi di amministratore.
+
+Per provare il container in esecuzione:
+
+```bash
+FLOWSTUDY_URL=http://localhost:8000 pytest -m container
+```
+
+
 ## Verifica
 
 ```bash
